@@ -1754,126 +1754,56 @@ async () => {
   |--------------------------------------------------------------------------
   */
 
-  const downloadApplication =
-  async () => {
+  const downloadApplication = async () => {
+  try {
+    setIsDownloading(true);
 
-    try {
-      setIsDownloading(true);
+    const element = pdfRef.current;
 
-      const element =
-      pdfRef.current;
-
-      if (!element) {
-        alert("Print area not found");
-        return;
-      }
-
-      // Get the full height of the content
-      const originalHeight = element.style.height;
-      const originalOverflow = element.style.overflow;
-      const originalPosition = element.style.position;
-      
-      // Temporarily set styles to capture full content
-      element.style.height = 'auto';
-      element.style.overflow = 'visible';
-      element.style.position = 'relative';
-      
-      // Wait for DOM to update
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Get the full scroll height
-      const fullHeight = element.scrollHeight;
-      const width = 794; // A4 width in pixels at 96 DPI
-
-      // Set the canvas size to capture everything
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: width,
-        height: fullHeight,
-        windowWidth: width,
-        windowHeight: fullHeight,
-        scrollX: 0,
-        scrollY: 0,
-        onclone: (clonedDoc) => {
-          // Ensure all images are loaded
-          const images = clonedDoc.querySelectorAll('img');
-          return Promise.all(Array.from(images).map(img => {
-            if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
-            return new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-              // If image fails to load, resolve after timeout
-              setTimeout(resolve, 5000);
-            });
-          }));
-        }
-      });
-
-      // Restore original styles
-      element.style.height = originalHeight;
-      element.style.overflow = originalOverflow;
-      element.style.position = originalPosition;
-
-      const imgData =
-      canvas.toDataURL(
-        "image/png"
-      );
-
-      const pdf =
-      new jsPDF(
-        "p",
-        "mm",
-        "a4"
-      );
-
-      const pdfWidth =
-      pdf.internal
-        .pageSize
-        .getWidth();
-
-      const pdfHeight =
-      (canvas.height * pdfWidth)
-      / canvas.width;
-
-      // Calculate how many pages are needed
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let heightLeft = pdfHeight;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if content is taller than one page
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(
-        `${application.registration_number}_Application.pdf`
-      );
-
+    if (!element) {
+      alert("Print area not found");
+      return;
     }
 
-    catch (err) {
+    element.style.width = "794px";
+    element.style.minHeight = "1123px";
 
-      console.log("PDF ERROR =>", err);
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      scrollX: 0,
+      scrollY: 0
+    });
 
-      alert(
-        "PDF download failed: " + err.message
-      );
+    const imgData = canvas.toDataURL("image/jpeg", 0.7);
 
-    } finally {
-      setIsDownloading(false);
-    }
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
 
-  };
+    const margin = 3;
+
+    pdf.addImage(
+      imgData,
+      "JPEG",
+      margin,
+      margin,
+      210 - margin * 2,
+      297 - margin * 2
+    );
+
+    pdf.save(`${application.registration_number}_Application.pdf`);
+
+  } catch (err) {
+    console.log("PDF ERROR =>", err);
+    alert("PDF download failed: " + err.message);
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
   /*
   |--------------------------------------------------------------------------
@@ -2046,15 +1976,17 @@ async () => {
       {/* PRINT AREA - CEEP-2026 APPLICATION FORM STYLE */}
 
       <div
-        ref={pdfRef}
-        id="application-print"
-        className="print-area max-w-5xl mx-auto bg-white p-5 text-[14px] mb-12"
-        style={{
-          border: "2px solid black",
-          overflow: "visible",
-          position: "relative"
-        }}
-      >
+  ref={pdfRef}
+  id="application-print"
+  className="print-area mx-auto bg-white p-2 text-[11px]"
+  style={{
+    width: "794px",
+    minHeight: "1123px",
+    boxSizing: "border-box",
+    overflow: "hidden",
+    border: "2px solid black"
+  }}
+>
 
         {/* HEADER */}
 
@@ -2213,7 +2145,7 @@ async () => {
           <Row label="Category" value={application.category || "-"} />
           <Row label="Special Category" value={application.special_category || "-"} />
           <Row label="Local Area Status" value={application.local_area_status || "-"} />
-          <Row label="PH Status" value={application.ph_status || "-"} />
+          {/* <Row label="PH Status" value={application.ph_status || "-"} /> */}
         </Table>
 
         {/* QUALIFICATION DETAILS */}
